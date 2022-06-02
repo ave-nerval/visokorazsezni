@@ -1,0 +1,294 @@
+---
+title: "Izbira testne statistike"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+#help(glmnet)
+#x: podatki (geni)
+#standardize = TRUE
+#y: vektor izidov (0,1)
+#family = binomial (glede na to kaksen izid napovedujes)
+#alpha = 1 : da delas LASSO regresijo
+#lambda: poisci z cv.glmnet
+
+#koeficient = 0 -> ta spremenljivka ni vazna
+```
+
+```{r}
+#help(cv.glmnet)
+#ocenimo s precnim preverjanjem, koliko je lambda
+#x, y (kot prej), family
+#nfolds = stevilo skupin, vecje stevilo: veckrat oceni model (dlje traja)
+#type.measure: katero kriterijsko funkcijo uporabi za optimizacijo
+#uporabi deviance (-2*log verjetja): manjse kot je, boljse je
+#lahko probas tudi mse
+
+
+#rezultat je optimalna lambda!! -> uporabi jo v glmnet
+```
+
+
+#Naloga 3
+
+Za 1. testno statistiko # t test skupna varianca
+
+```{r}
+M <- 500
+B <- 1000
+n=25 #velikost vzorca za 1 gen
+
+mu <- 0.5
+
+
+testnaPerm <- rep(NA,M)
+vrednostp <- rep(NA,B)
+
+
+for (k in 1:B){
+
+y <- replicate(250,rnorm(n,0,1)) #generiraj 250 genov (po 25 ponovitev)
+x <- rbinom(25,size=1,prob=0.5)
+y[x==0,1:10] <- matrix(rnorm(sum(x==0)*10, mu, 1), ncol=10)
+
+n1<-sum(x==0) #stevilo 0
+n2<-n-n1
+  
+
+#ponovi za razmetan X
+#shrani originalno testno stat
+
+#ce H
+d1 <- y[x==0,] #y-i ki imajo 0
+d2 <- y[x==1,] #y-i ki imajo 1
+
+povprx0 <- apply(d1,2,mean)
+povprx1 <- apply(d2,2,mean)
+
+razlikapovpr <- (povprx0-povprx1)^2
+
+skupnaVarianca <- (apply(d1,2,var)*(n1-1)+apply(d2,2,var)*(n2-1))/n1+n2-2
+stNapaka <- skupnaVarianca*sqrt(1/n1+1/n2)
+
+testna <- sum((razlikapovpr/stNapaka))
+
+#permutacije
+for (i in 1:M){
+
+razmeciX <- x[sample(1:n)]
+
+d1 <- y[razmeciX==0,] #y-i ki imajo 0
+d2 <- y[razmeciX==1,] #y-i ki imajo 1
+
+povprx0 <- apply(d1,2,mean)
+povprx1 <- apply(d2,2,mean)
+
+razlikapovpr <- (povprx0-povprx1)^2
+
+skupnaVarianca <- (apply(d1,2,var)*(n1-1)+apply(d2,2,var)*(n2-1))/n1+n2-2
+stNapaka <- skupnaVarianca*sqrt(1/n1+1/n2)
+
+sum((razlikapovpr/stNapaka))
+testnaPerm[i] <- sum((razlikapovpr/stNapaka))
+}
+
+
+#pvrednost
+#zelimo 1000 p vrednosti
+#moc = delez p-jev, ki so manjsi od alfa
+#preveri velikost: h0 velja: zelimo enakomerne p
+
+vrednostp[k] <- (1+ sum(abs(testnaPerm)>=abs(testna)) )/(M+1)
+
+}
+
+hist(vrednostp)
+
+#moc testa
+mean(vrednostp < 0.05)
+```
+
+
+Za 2. testno statistiko # t test razlicna varianca
+
+```{r}
+
+M <- 500
+B <- 1000
+n=25 #velikost vzorca za 1 gen
+
+mu <- 0.5
+
+
+testnaPerm <- rep(NA,M)
+vrednostp <- rep(NA,B)
+
+
+for (k in 1:B){
+
+y <- replicate(250,rnorm(n,0,1))#generiraj 250 genov (po 25 ponovitev)
+x <- rbinom(25,size=1,prob=0.5)
+y[x==0,1:10] <- matrix(rnorm(sum(x==0)*10, mu, 1), ncol=10)
+
+n1<-sum(x==0) #stevilo 0
+n2<-n-n1
+  
+
+#ponovi za razmetan X
+#shrani originalno testno stat
+
+#ce H
+d1 <- y[x==0,] #y-i ki imajo 0
+d2 <- y[x==1,] #y-i ki imajo 1
+
+povprx0 <- apply(d1,2,mean)
+povprx1 <- apply(d2,2,mean)
+
+razlikapovpr <- (povprx0-povprx1)
+
+
+stNapaka <- sqrt(apply(d1,2,var)/(n1) +apply(d2,2,var)/(n2)) #razlicna varianca
+testna <- sum((razlikapovpr/stNapaka))
+
+#permutacije
+for (i in 1:M){
+
+razmeciX <- x[sample(1:n)]
+
+d1 <- y[razmeciX==0,] #y-i ki imajo 0
+d2 <- y[razmeciX==1,] #y-i ki imajo 1
+
+povprx0 <- apply(d1,2,mean)
+povprx1 <- apply(d2,2,mean)
+
+razlikapovpr <- (povprx0-povprx1)
+
+stNapaka <- sqrt(apply(d1,2,var)/(n1) +apply(d2,2,var)/(n2)) #razlicna varianca
+
+testnaPerm[i] <- sum((razlikapovpr/stNapaka))
+}
+
+
+#pvrednost
+#zelimo 1000 p vrednosti
+#moc = delez p-jev, ki so manjsi od alfa
+#preveri velikost: h0 velja: zelimo enakomerne p
+
+vrednostp[k] <- (1+ sum(abs(testnaPerm)>=abs(testna)) )/(M+1)
+
+}
+
+
+hist(vrednostp)
+
+#moc testa
+mean(vrednostp < 0.05)
+
+```
+
+
+Za 3. testno statistiko # F test 
+
+
+```{r}
+
+M <- 100
+B <- 100
+n=25 #velikost vzorca za 1 gen
+
+mu <- 0.5
+
+
+testnaPerm <- rep(NA,M)
+vrednostp <- rep(NA,B)
+Fs <-  rep(NA,B)
+Fsp <- rep(NA,M)
+
+for (k in 1:B){
+
+y <- replicate(250,rnorm(n,0,1))#generiraj 250 genov (po 25 ponovitev)
+x <- rbinom(25,size=1,prob=0.5)
+y[x==0,1:10] <- matrix(rnorm(sum(x==0)*10, mu, 1), ncol=10)
+
+n1<-sum(x==0) #stevilo 0
+n2<-n-n1
+  
+
+#ponovi za razmetan X
+#shrani originalno testno stat
+
+#ce H
+d1 <- y[x==0,] #y-i ki imajo 0
+d2 <- y[x==1,] #y-i ki imajo 1
+
+var1 <- apply(d1,2,var)
+var2 <- apply(d2,2,var)
+
+for (l in 1:B){
+  if(var1[l] >= var2[l]){
+    Fs[l] <- var1[l]/var2[l]
+  }else{
+    Fs[l] <- var2[l]/var1[l]
+  }
+}
+  
+ 
+testna <- sum(Fs)
+            
+
+#permutacije
+for (i in 1:M){
+
+razmeciX <- x[sample(1:n)]
+
+d1 <- y[razmeciX==0,] #y-i ki imajo 0
+d2 <- y[razmeciX==1,] #y-i ki imajo 1
+
+var1p <- apply(d1,2,var)
+var2p <- apply(d2,2,var)
+
+for (ii in 1:M){
+  if (var1p[ii]>var2p[ii]){
+    Fsp[ii] <-var1p[i]/var2p[ii]
+  }else{
+    Fsp[ii] <- var2p[i]/var1p[ii]
+    }
+  }
+
+testnaPerm[i] <- sum(Fsp)
+}
+
+
+#pvrednost
+#zelimo 1000 p vrednosti
+#moc = delez p-jev, ki so manjsi od alfa
+#preveri velikost: h0 velja: zelimo enakomerne p
+
+vrednostp[k] <- (1+ sum(abs(testnaPerm)>=abs(testna)) )/(M+1)
+
+}
+
+
+
+hist(vrednostp)
+
+#moc testa
+mean(vrednostp < 0.05)
+```
+
+
+
+
+
+
+
+
+
